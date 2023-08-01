@@ -152,7 +152,7 @@
             $("#searchBox").on("input", function () {
                 var searchText = $(this).val().trim();
                 if (searchText === "") {
-                    loadMoviesForPage(currentPage, "initial");
+                    loadMoviesForPage(1, "initial");
                     $("#noResultMessage").hide();
                 }
             });
