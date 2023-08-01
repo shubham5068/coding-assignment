@@ -1,0 +1,456 @@
+﻿@model IEnumerable<MarketingCodingAssignment.Models.Film>
+
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" />
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="~/css/site.css" />
+    <script>
+        var timerId;
+        var filterValue;
+        var loadAct;
+        var count;
+        var loadingAction;
+        var currentPage = 1;
+        var pageSize = 50;
+        var autocompleteInitialized = false;
+        function showLoadingOverlay() {
+            $(".loading-overlay").fadeIn();
+        }
+
+        // Function to hide the loading overlay
+        function hideLoadingOverlay() {
+            $(".loading-overlay").fadeOut();
+        }
+        $(document).ready(function () {
+            function loadMoviesForPage(page,loadAction) {
+                showLoadingOverlay();
+                var searchStartText = $("#releaseStartDateFilter").val();
+                var searchEndText = $("#releaseEndDateFilter").val();
+                var searchText1 = $("#ratingFilter").val();
+                var searchText2 = $("#searchBox").val();
+                if (loadAction==="filter") {
+                    if (searchStartText !== "" && searchEndText !== "") {
+                        filterValue = searchStartText + "," + searchEndText;
+                    }
+
+                    if (searchText1 !== "") {
+                        filterValue = $("#ratingFilter").val();
+                    }
+                    var filterColumn = $("#filterColumn").val();
+                    if (searchText2 !== "") {
+                        filterValue = $("#searchBox").val();
+                        filterColumn = "searchValue";
+                    }
+                    loadAct = loadAction;
+                }
+                else{
+                    loadAct = loadAction;
+                }
+                
+                var url = '@Url.Action("SearchFilter", "Home")';
+                $.ajax({
+                    type: 'GET',
+                    url: url,
+                    data: { searchString: filterValue, filterColumn: filterColumn, filterValue: filterValue, LoadAct: loadAct, pageNumber: page, pageSize: pageSize },
+                    beforeSend: function () {
+                        showLoadingOverlay();
+                    },
+                    success: function (response) {
+                        if (response.responseCode === 0) {
+                            var films = response.films;
+                            count = films.length;
+                            var tableBody = $("#searchResultsTable tbody");
+                            tableBody.empty();
+
+                            if (films.length > 0) {
+                                $("#searchResultsTable").show();
+                                $("#noResultMessage").hide();
+                                $.each(films, function (index, film) {
+                                    var sliceDate = film.releaseDate.slice(0, 10);
+                                    var parts = sliceDate.split('-');
+                                    var formattedDate = parts[2] + '-' + parts[1] + '-' + parts[0];
+                                    var row = "<tr><td>" + film.title + "</td><td>" + film.overview + "</td><td>" + formattedDate + "</td><td>" + film.voteAverage + "</td></tr>";
+                                    tableBody.append(row);
+                                });
+                            } else {
+                                $("#noResultMessage").show();
+                                $("#searchResultsTable").hide();
+                            }
+                            hideLoadingOverlay();
+                        } else {
+                            bootbox.alert(response.responseMessage);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error);
+                    }
+                });
+            }
+            
+
+            function loadPreviousPage(loadingAction) {
+                if (currentPage > 1) {
+                    showLoadingOverlay();
+                    currentPage--;
+                    loadMoviesForPage(currentPage, loadingAction);
+                    $("#nextPage").prop("disabled", false); 
+                }
+                if (currentPage === 1) {
+                    $("#previousPage").prop("disabled", true);
+                }
+                hideLoadingOverlay();
+            }
+
+            function loadNextPage(loadingAction) {
+                if(count>=50){
+                    showLoadingOverlay();
+                    currentPage++;
+                    loadMoviesForPage(currentPage, loadingAction);
+                    $("#previousPage").prop("disabled", false);
+                }
+                else{
+                    $("#nextPage").prop("disabled", true);
+                }
+                hideLoadingOverlay();
+            }
+            $("#btnReset").on("click", function () {
+                var currentPage = 1;
+                loadMoviesForPage(currentPage, "initial");
+                $("#searchResultsTable").show();
+                $("#ratingFilter").val("");
+                $("#searchBox").val("");
+                $("#filterColumn").val("");
+                $("#ratingFilter").hide();
+                $("#noResultMessage").hide();
+                //$("#releaseStartDateFilter").hide();
+                //$("#releaseEndDateFilter").hide();
+                clearTable();
+            });
+
+            function triggerSearch() {
+                currentPage = 1; 
+                loadingAction = "filter";
+                loadMoviesForPage(currentPage, loadingAction);
+            }
+
+            $("#btnSearch").on("click", function () {
+                triggerSearch();
+            });
+
+            loadInitialPage();
+
+            function loadInitialPage() {
+                loadingAction = "initial";
+                loadMoviesForPage(currentPage, loadingAction);
+            }
+            $("#searchBox").on("input", function () {
+                var searchText = $(this).val().trim();
+                if (searchText === "") {
+                    loadMoviesForPage(currentPage, "initial");
+                    $("#noResultMessage").hide();
+                }
+            });
+
+            $("#previousPage").on("click", function (e) {
+                e.preventDefault();
+                if (loadingAction=="initial") {
+                    loadPreviousPage("initial");
+                }
+                else{
+                    loadPreviousPage("filter");
+                }
+            });
+
+            $("#nextPage").on("click", function (e) {
+                e.preventDefault();
+                if (loadingAction == "initial") {
+                    loadNextPage("initial");
+                }
+                else{
+                    loadNextPage("filter");
+                }
+                
+            });
+        });
+        $(document).ready(function () {
+            var ratingDropdown = $("#ratingFilter");
+            for (var i = 1.0; i <= 10.0; i += 0.1) {
+                var option = $("<option>").val(i.toFixed(1)).text(i.toFixed(1));
+                ratingDropdown.append(option);
+            }
+        });
+        function initDatePicker() {
+            $("#releaseStartDateFilter").datepicker({
+                dateFormat: "yy-mm-dd",
+                changeMonth: true,
+                changeYear: true,
+                showButtonPanel: true,
+                yearRange: "c-100:c+100"
+            });
+            $("#releaseEndDateFilter").datepicker({
+                dateFormat: "yy-mm-dd",
+                changeMonth: true,
+                changeYear: true,
+                showButtonPanel: true,
+                yearRange: "c-100:c+100"
+            });
+        }
+
+        function toggleFilterInput() {
+            var selectedOption = $("#filterColumn").val();
+            $("#releaseStartDateFilter,#releaseEndDateFilter, #ratingFilter").hide();
+
+            if (selectedOption === "ReleaseDate") {
+                $("#releaseStartDateFilter").show();
+                $("#releaseEndDateFilter").show();
+                initDatePicker();
+            } else if (selectedOption === "VoteAverage") {
+                $("#ratingFilter").show();
+            }
+        }
+
+        $(document).ready(function () {
+            $("#releaseStartDateFilter,#releaseEndDateFilter, #ratingFilter").hide();
+            toggleFilterInput();
+
+            $("#filterColumn").change(function () {
+                toggleFilterInput();
+            });
+        });
+        $(function () {
+            $("#searchBox").autocomplete({
+                source: [],
+                source: function (request, response) {
+                    var searchText = request.term;
+                    var url = '@Url.Action("AutoCompleteSearch", "Home")';
+                    $.ajax({
+                        type: 'GET',
+                        url: url,
+                        data: { searchString: searchText },
+                        success: function (data) {
+                            if(data.length>0){
+                                var suggestions = $("#searchResults");
+                                suggestions.empty();
+                                for (var i = 0; i < data.length; i++) {
+                                    suggestions.push({ label: data[i] });
+                                }
+                                response(suggestions);
+                            }
+                            else{
+                                $("#noResultMessage").hide();
+                            }
+                            hideLoadingOverlay();
+                        },
+                        error: function (xhr, status, error) {
+                            console.log(error);
+                            response([]);
+                        }
+                    });
+                },
+                minLength: 2, 
+                select: function (event, ui) {
+                    showLoadingOverlay();
+                    $("#searchBox").val(ui.item.value);
+                    var searchText = ui.item.value;
+                    var url = '@Url.Action("Search", "Home")';
+                    $.ajax({
+                        type: 'GET',
+                        url: url,
+                        data: { searchString: searchText },
+                        beforeSend: function () {
+                            showLoadingOverlay(); 
+                        },
+                        success: function (response) {
+                            if (response.responseCode === 0) {
+                                $("#searchResultsTable").show();
+                                var films = response.films;
+                                var tableBody = $("#searchResultsTable tbody");
+                                tableBody.empty();
+
+                                $.each(films, function (index, film) {
+                                    var sliceDate = film.releaseDate.slice(0,10);
+                                    var parts = sliceDate.split('-');
+                                    var formattedDate = parts[2] + '-' + parts[1] + '-' + parts[0];
+                                    var row = "<tr><td>" + film.title + "</td><td>" + film.overview + "</td><td>" + formattedDate + "</td><td>" + film.voteAverage + "</td></tr>";
+                                    tableBody.append(row);
+                                });
+                            } else {
+                                bootbox.alert(response.responseMessage);
+                            }
+                            hideLoadingOverlay();
+                        },
+                        error: function (xhr, status, error) {
+                            console.log(error);
+                        }
+                    });
+                }
+            });
+
+            $("#searchBox").on("input", function () {
+                clearTimeout(timerId); 
+
+                timerId = setTimeout(function () {
+                    var searchText = $("#searchBox").val().trim();
+                    if (searchText === "") {
+                        $("#noResultMessage").hide();
+                        return;
+                    }
+
+                    var url = '@Url.Action("AutoCompleteSearch", "Home")';
+                    $.ajax({
+                        type: 'GET',
+                        url: url,
+                        data: { searchString: searchText },
+                        success: function (data) {
+                            if (data.length > 0) {
+                                var suggestions = data.map(function (item) {
+                                    return { label: item };
+                                });
+                                if (autocompleteInitialized) {
+                                    updateSuggestions(suggestions);
+                                } else {
+                                    initializeAutocomplete(suggestions);
+                                }
+                            } else {
+                                $("#noResultMessage").hide();
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            console.log(error);
+                            clearTable();
+                        }
+                    });
+                }, 300); 
+            });
+        });
+
+            function initializeAutocomplete(suggestions) {
+            $("#searchBox").autocomplete({
+                source: suggestions,
+                minLength: 2,
+                select: function (event, ui) {
+                    $("#searchBox").val(ui.item.value);
+                    var searchText = ui.item.value;
+                    var url = '@Url.Action("Search", "Home")';
+                    $.ajax({
+                        type: 'GET',
+                        url: url,
+                        data: { searchString: searchText },
+                        beforeSend: function () {
+                            showLoadingOverlay();
+                        },
+                        success: function (response) {
+                            if (response.responseCode === 0) {
+                                $("#searchResultsTable").show();
+                                var films = response.films;
+                                count = films.length;
+                                var tableBody = $("#searchResultsTable tbody");
+                                tableBody.empty();
+
+                                $.each(films, function (index, film) {
+                                    var sliceDate = film.releaseDate.slice(0, 10);
+                                    var parts = sliceDate.split('-');
+                                    var formattedDate = parts[2] + '-' + parts[1] + '-' + parts[0];
+                                    var row = "<tr><td>" + film.title + "</td><td>" + film.overview + "</td><td>" + formattedDate + "</td><td>" + film.voteAverage + "</td></tr>";
+                                    tableBody.append(row);
+                                });
+                            } else {
+                                bootbox.alert(response.responseMessage);
+                            }
+                            hideLoadingOverlay();
+                        },
+                        error: function (xhr, status, error) {
+                            console.log(error);
+                        }
+                    });
+                }
+            });
+            autocompleteInitialized = true;
+            $("#searchBox").autocomplete("search", $("#searchBox").val());
+        }
+
+        function updateSuggestions(suggestions) {
+            $("#searchBox").autocomplete("option", "source", suggestions);
+            $("#searchBox").autocomplete("search", $("#searchBox").val());
+        }
+        
+            function clearTable() {
+                $("#searchResultsTable tbody").empty();
+                $("#searchResultsTable").show();
+            }
+        
+        
+    </script>
+}
+
+<div class="searchContainer mt-8">
+    <div class="input-group" style="width:60%;margin-left:5%">
+        <input type="text" id="searchBox" class="form-control search-box" placeholder="Search movies...">
+        <div class="input-group-btn" style="margin-left:2%">
+            <select id="filterColumn" class="form-control">
+                <option value="">Filter</option>
+                <option value="VoteAverage">Select rating</option>
+            </select>
+            @*<input type="text" id="releaseStartDateFilter" class="form-control" placeholder="From Release Date" style="display:none;margin-left:2%">
+            <input type="text" id="releaseEndDateFilter" class="form-control" placeholder="Release Date" style="display:none;margin-left:2%">*@
+            <select id="ratingFilter" class="form-control" style="margin-left:2%;margin-top:1%">
+                <option value="">Rating</option>
+            </select>
+        </div>       
+        <div class="input-group-btn input-group-btn-gap" style="width:40%;">
+            <button class="btn btn-primary" type="button" id="btnSearch" style="margin-left:4%">Search</button>
+            <button class="btn btn-primary" type="button" id="btnReset" style="margin-left:2%">Reset Filter</button>
+        </div>
+    </div>
+    <div class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+</div>
+
+<div style="bottom:2%;margin-bottom:5%;">
+    <table class="table table-bordered" id="searchResultsTable" style="margin-top: 4%;">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Overview</th>
+                <th>Release Date</th>
+                <th>Rating</th>
+            </tr>
+        </thead>
+        <tbody>
+
+        </tbody>
+    </table>
+    <div id="noResultMessage" style="display: none;">No result found.</div>
+    <!-- Pagination -->
+    <ul class="pagination justify-content-center">
+        <li class="page-item" id="previousPage">
+            <a class="page-link" href="#" aria-label="Previous">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        <li class="page-item" id="nextPage">
+            <a class="page-link" href="#" aria-label="Next">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+
+@*@foreach (var film in Model)
+            {
+                <tr>
+                    <td>@film.Title</td>
+                    <td>@film.Overview</td>
+                    <td>@film.ReleaseDate</td>
+                    <td>@film.VoteAverage</td>
+                </tr>
+ }*@
