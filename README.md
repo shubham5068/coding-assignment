@@ -8,7 +8,9 @@ I have built a web-based search application, MovieHub, using Lucene.NET and .NET
 
 2. **Keyword Search**: Users can enter movie titles to perform a search. The application retrieves relevant movie information based on the user's input.
 
-3. **Responsive Design**: MovieHub features a responsive design, ensuring that it renders well on various devices, including desktops, tablets, and mobile phones. Users can access the search app seamlessly from different screen sizes and resolutions.
+3. **Paging**: The addition of paging functionality allows users to navigate through search results efficiently, enhancing the usability of the application.
+
+4. **Responsive Design**: MovieHub features a responsive design, ensuring that it renders well on various devices, including desktops, tablets, and mobile phones. Users can access the search app seamlessly from different screen sizes and resolutions.
 
 ## Advanced Features Implemented
 
