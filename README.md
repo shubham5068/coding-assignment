@@ -1,4 +1,4 @@
-# coding-assignment
+# Coding Assignment
 
 I have built a web-based search application, MovieHub, using Lucene.NET and .NET Core. This application allows users to search for movies using keywords and is backed by test data from the included movies.csv file. In addition to basic search functionality, I have implemented several advanced features to enhance the user experience.
 
